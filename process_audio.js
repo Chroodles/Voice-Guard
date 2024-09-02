@@ -1,27 +1,28 @@
-const formidable = require('formidable');
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 
-exports.handler = async (event, context) => {
+exports.handler = async (event) => {
   try {
-    // Parse the form data using formidable
-    const form = new formidable.IncomingForm();
-    const formParse = () => new Promise((resolve, reject) => {
-      form.parse(event, (err, fields, files) => {
-        if (err) reject(err);
-        resolve({ fields, files });
-      });
-    });
-
-    const { files } = await formParse();
-    const audioFile = files.audio[0];
+    // Decode the base64-encoded body
+    const bodyBuffer = Buffer.from(event.body, 'base64');
+    
+    // Assume the file is uploaded as a single part, so we extract it directly
+    const boundary = event.headers['content-type'].split('boundary=')[1];
+    const body = bodyBuffer.toString('binary');
+    const parts = body.split(`--${boundary}`);
+    
+    // Extract the file content and its metadata
+    const filePart = parts.find(part => part.includes('filename='));
+    const [fileMetadata, fileContent] = filePart.split('\r\n\r\n');
+    const contentDisposition = fileMetadata.split('; ').find(param => param.startsWith('filename='));
+    const filename = contentDisposition.split('=')[1].replace(/"/g, '');
     
     // Save the file locally
-    const tempPath = path.join('/tmp', audioFile.name);
-    fs.writeFileSync(tempPath, audioFile.content);
+    const tempPath = path.join('/tmp', filename);
+    fs.writeFileSync(tempPath, fileContent, 'binary');
     
-    // Process the audio file
+    // Process the audio file using the Python script
     await new Promise((resolve, reject) => {
       exec(`python3 process_audio.py ${tempPath}`, (error, stdout, stderr) => {
         if (error) {
