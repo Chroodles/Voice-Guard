@@ -5,18 +5,18 @@ const { exec } = require('child_process');
 
 exports.handler = async (event, context) => {
   try {
-    // Create an instance of formidable.IncomingForm
+    // Ensure form parsing
     const form = new formidable.IncomingForm();
-    form.uploadDir = '/tmp'; // Set the directory for file uploads
+    form.uploadDir = '/tmp'; // Directory for file uploads
     form.keepExtensions = true; // Keep file extensions
 
-    // Parsing the multipart form data
-    const { files, fields } = await new Promise((resolve, reject) => {
+    // Handle the form data
+    const { files } = await new Promise((resolve, reject) => {
       form.parse(event, (err, fields, files) => {
         if (err) {
           reject(err);
         } else {
-          resolve({ files, fields });
+          resolve({ files });
         }
       });
     });
@@ -30,10 +30,10 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Save the file locally
-    const tempPath = path.join('/tmp', path.basename(audioFile.path));
+    // Process the audio file
+    const tempPath = path.join('/tmp', path.basename(audioFile.filepath)); // Updated property name
+    fs.renameSync(audioFile.filepath, tempPath); // Move file to /tmp directory
 
-    // Process the audio file (replace with your actual audio processing logic)
     await new Promise((resolve, reject) => {
       exec(`python3 process_audio.py ${tempPath}`, (error, stdout, stderr) => {
         if (error) {
@@ -44,7 +44,7 @@ exports.handler = async (event, context) => {
       });
     });
 
-    // Return the processed file as a response
+    // Return the processed file
     const processedFilePath = tempPath.replace('.mp3', '_processed.mp3');
     if (fs.existsSync(processedFilePath)) {
       return {
