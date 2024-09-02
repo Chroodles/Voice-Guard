@@ -7,16 +7,21 @@ exports.handler = async (event, context) => {
   try {
     // Create an instance of formidable.IncomingForm
     const form = new formidable.IncomingForm();
+    form.uploadDir = '/tmp'; // Set the directory for file uploads
+    form.keepExtensions = true; // Keep file extensions
 
-    // Parsing the multipart form data from the event body
-    const { files } = await new Promise((resolve, reject) => {
+    // Parsing the multipart form data
+    const { files, fields } = await new Promise((resolve, reject) => {
       form.parse(event, (err, fields, files) => {
-        if (err) reject(err);
-        else resolve({ files });
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ files, fields });
+        }
       });
     });
 
-    const audioFile = files.audio[0];
+    const audioFile = files.audio;
     
     if (!audioFile) {
       return {
@@ -26,9 +31,8 @@ exports.handler = async (event, context) => {
     }
 
     // Save the file locally
-    const tempPath = path.join('/tmp', audioFile.name);
-    fs.writeFileSync(tempPath, audioFile.path);
-    
+    const tempPath = path.join('/tmp', path.basename(audioFile.path));
+
     // Process the audio file (replace with your actual audio processing logic)
     await new Promise((resolve, reject) => {
       exec(`python3 process_audio.py ${tempPath}`, (error, stdout, stderr) => {
