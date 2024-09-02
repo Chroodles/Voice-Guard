@@ -10,6 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@netlify/functions": "^2.8.1"
+    "@netlify/functions": "^2.8.1",
+    "formidable": "^3.5.1"
   }
 }
